@@ -1,0 +1,1 @@
+- [Tessera agent identity](agent-identity-boundary.md) — Tessera acts under its own identity and never impersonates the operator.

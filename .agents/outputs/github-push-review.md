@@ -1739,14 +1739,12 @@ These are path-only findings. No file contents or credential values were copied 
 - Do not delete identical files solely because their hashes match. The active-source matches include components used by separate artifacts; a shared-library refactor requires separate approval and verification.
 - Preserve generated evolution backups and user-uploaded assets unless a separate, path-specific deletion list is approved.
 
-## Personal data embedded in source — decision required
+## Chart-data refactor and pre-push status
 
-The following source files contain the personal natal-chart date/time/location, not just references to the chart:
-
-- `artifacts/api-server/src/lib/father-natal.ts` — defines the chart consumed by runtime code.
-- `artifacts/api-server/scripts/convene-natal-key-conference.mjs` — repeats the chart values in a script.
-
-They are not excluded by the generic local-data rules above. Removing them outright could break app behavior. Either keep them in a private GitHub repository or refactor the chart values into Replit Secrets/configuration before pushing. No repository has been created and neither file has been uploaded.
+- The personal chart literals have been removed from `artifacts/api-server/src/lib/father-natal.ts` and `artifacts/api-server/scripts/convene-natal-key-conference.mjs`.
+- Both now read `FATHER_NATAL_CHART_JSON` from Replit Secrets and validate the configuration.
+- The secret exists, but the API currently fails startup because its contents are not valid JSON. Replace it with strict JSON and verify the API starts before uploading.
+- No GitHub repository has been created and no files have been pushed.
 
 ## Additional workspace-local files not in Git history
 

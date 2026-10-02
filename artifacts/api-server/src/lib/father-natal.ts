@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { glyphEncode, glyphDecode } from "./sigil-cipher";
+import { z } from "zod";
 
 const NAMESPACE = "tesseract:natal:v1";
 
@@ -8,49 +9,74 @@ const STABLE_GLYPHS = [
   "ι","κ","λ","μ","ν","ξ","ο","π",
 ] as const;
 
-export const FATHER_NATAL_CHART = {
-  birth: {
-    date: "1998-10-07",
-    time: "05:16",
-    location: "Palos Hospital, Palos Heights, Illinois, USA",
-    timezone: "America/Chicago (CDT)",
-    houseSystem: "Placidus",
-  },
-  core: {
-    sun:        { sign: "Libra",  degree: "13°24'", house: 2 },
-    moon:       { sign: "Aries",  degree: "28°17'", house: 8 },
-    ascendant:  { sign: "Virgo",  degree: "8°09'"            },
-  },
-  planets: {
-    mercury: { sign: "Libra",       degree: "21°34'", house: 2 },
-    venus:   { sign: "Libra",       degree: "7°23'",  house: 2 },
-    mars:    { sign: "Leo",         degree: "29°36'", house: 12 },
-    jupiter: { sign: "Pisces",      degree: "20°26'", house: 7,  retrograde: true },
-    saturn:  { sign: "Taurus",      degree: "1°28'",  house: 9,  retrograde: true },
-    uranus:  { sign: "Aquarius",    degree: "8°52'",  house: 5,  retrograde: true },
-    neptune: { sign: "Capricorn",   degree: "29°23'", house: 5,  retrograde: true },
-    pluto:   { sign: "Sagittarius", degree: "6°00'",  house: 4 },
-  },
-  nodes: {
-    northNode: { sign: "Leo", degree: "28°57'", house: 12, retrograde: true },
-  },
-  aspects: [
-    "Sun conjunct Mercury and Venus (Libra)",
-    "Sun trine Uranus",
-    "Moon trine Mars",
-    "Moon square Neptune",
-    "Venus trine Uranus",
-    "Ascendant trine Moon and Saturn",
-    "Saturn square Neptune",
-  ],
-  themes: {
-    dominance: "Air / Libra (Sun, Mercury, Venus)",
-    rising: "Virgo — practical, analytical, service-minded",
-    moonSign: "Aries — passionate, independent, pioneering",
-    houseConcentration: ["2nd (self-worth, values)", "7th (partnerships)", "12th (inner work)", "4th (roots)"],
-    chineseZodiac: "Earth Tiger (1998)",
-  },
-} as const;
+const chartPositionSchema = z.object({
+  sign: z.string().min(1),
+  degree: z.string().min(1),
+  house: z.number().int().min(1).max(12),
+  retrograde: z.boolean().optional(),
+});
+
+const fatherNatalChartSchema = z.object({
+  birth: z.object({
+    date: z.string().min(1),
+    time: z.string().min(1),
+    location: z.string().min(1),
+    timezone: z.string().min(1),
+    houseSystem: z.string().min(1),
+  }),
+  core: z.object({
+    sun: chartPositionSchema,
+    moon: chartPositionSchema,
+    ascendant: z.object({
+      sign: z.string().min(1),
+      degree: z.string().min(1),
+    }),
+  }),
+  planets: z.object({
+    mercury: chartPositionSchema,
+    venus: chartPositionSchema,
+    mars: chartPositionSchema,
+    jupiter: chartPositionSchema,
+    saturn: chartPositionSchema,
+    uranus: chartPositionSchema,
+    neptune: chartPositionSchema,
+    pluto: chartPositionSchema,
+  }),
+  nodes: z.object({
+    northNode: chartPositionSchema,
+  }),
+  aspects: z.array(z.string().min(1)),
+  themes: z.object({
+    dominance: z.string().min(1),
+    rising: z.string().min(1),
+    moonSign: z.string().min(1),
+    houseConcentration: z.array(z.string().min(1)),
+    chineseZodiac: z.string().min(1),
+  }),
+});
+
+function loadFatherNatalChart() {
+  const raw = process.env.FATHER_NATAL_CHART_JSON;
+  if (!raw) {
+    throw new Error("Missing required Replit Secret: FATHER_NATAL_CHART_JSON");
+  }
+
+  let parsedJson: unknown;
+  try {
+    parsedJson = JSON.parse(raw);
+  } catch {
+    throw new Error("FATHER_NATAL_CHART_JSON must contain valid JSON");
+  }
+
+  const parsedChart = fatherNatalChartSchema.safeParse(parsedJson);
+  if (!parsedChart.success) {
+    throw new Error("FATHER_NATAL_CHART_JSON does not match the expected chart structure");
+  }
+
+  return parsedChart.data;
+}
+
+export const FATHER_NATAL_CHART = loadFatherNatalChart();
 
 /** Deterministic single-line canonical form of the chart for hashing. */
 export function natalCanonicalString(): string {

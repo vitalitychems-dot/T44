@@ -14,30 +14,111 @@
 import { createHash } from "node:crypto";
 
 // ---------------------------------------------------------------
-// Holder natal chart (Libra Sun, Aries Moon, Virgo Rising)
+// Load the holder chart from Replit Secrets.
 // ---------------------------------------------------------------
-const NATAL = {
-  birthDateISO: "1998-10-07",
-  birthTimeHHMM: "05:16",
-  birthPlace: "Palos Hospital, Palos Heights, Illinois (CDT)",
-  houseSystem: "Placidus",
-  westernZodiac: "libra",
-  chineseZodiac: "earth-tiger",
-  placements: {
-    sun:       { sign: "libra",       degree: 13.40, house: 2 },
-    moon:      { sign: "aries",       degree: 28.28, house: 8 },
-    ascendant: { sign: "virgo",       degree:  8.15, house: 1 },
-    mercury:   { sign: "libra",       degree: 21.57, house: 2 },
-    venus:     { sign: "libra",       degree:  7.38, house: 2 },
-    mars:      { sign: "leo",         degree: 29.60, house: 12 },
-    jupiter:   { sign: "pisces",      degree: 20.43, house: 7,  retrograde: true },
-    saturn:    { sign: "taurus",      degree:  1.47, house: 9,  retrograde: true },
-    uranus:    { sign: "aquarius",    degree:  8.87, house: 5,  retrograde: true },
-    neptune:   { sign: "capricorn",   degree: 29.38, house: 5,  retrograde: true },
-    pluto:     { sign: "sagittarius", degree:  6.00, house: 4 },
-    northNode: { sign: "leo",         degree: 28.95, house: 12, retrograde: true },
-  },
-};
+function requireObject(value, path) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`FATHER_NATAL_CHART_JSON is missing ${path}`);
+  }
+  return value;
+}
+
+function requireString(value, path) {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new Error(`FATHER_NATAL_CHART_JSON is missing ${path}`);
+  }
+  return value.trim();
+}
+
+function decimalDegrees(value, path) {
+  const raw = requireString(value, path);
+  const sexagesimal = raw.match(/^(-?\d{1,3})\s*°\s*(\d{1,2})(?:\s*['′’])?(?:\s*(\d+(?:\.\d+)?)\s*["″])?$/u);
+  let degrees;
+  if (sexagesimal) {
+    const sign = Number(sexagesimal[1]) < 0 ? -1 : 1;
+    degrees =
+      sign *
+      (Math.abs(Number(sexagesimal[1])) +
+        Number(sexagesimal[2]) / 60 +
+        Number(sexagesimal[3] ?? 0) / 3600);
+  } else {
+    degrees = Number(raw.replace(/°$/, ""));
+  }
+  if (!Number.isFinite(degrees)) {
+    throw new Error(`FATHER_NATAL_CHART_JSON has an invalid ${path}`);
+  }
+  return Number(degrees.toFixed(2));
+}
+
+function mapPlacement(value, path, houseOverride) {
+  const position = requireObject(value, path);
+  const sign = requireString(position.sign, `${path}.sign`).toLowerCase();
+  const house = houseOverride ?? position.house;
+  if (!Number.isInteger(house) || house < 1 || house > 12) {
+    throw new Error(`FATHER_NATAL_CHART_JSON has an invalid ${path}.house`);
+  }
+  return {
+    sign,
+    degree: decimalDegrees(position.degree, `${path}.degree`),
+    house,
+    ...(position.retrograde === true ? { retrograde: true } : {}),
+  };
+}
+
+function loadNatal() {
+  const raw = process.env.FATHER_NATAL_CHART_JSON;
+  if (!raw) {
+    throw new Error("Missing required Replit Secret: FATHER_NATAL_CHART_JSON");
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error("FATHER_NATAL_CHART_JSON must contain valid JSON");
+  }
+
+  const chart = requireObject(parsed, "chart");
+  const birth = requireObject(chart.birth, "birth");
+  const core = requireObject(chart.core, "core");
+  const planets = requireObject(chart.planets, "planets");
+  const nodes = requireObject(chart.nodes, "nodes");
+  const themes = requireObject(chart.themes, "themes");
+  const timezone = requireString(birth.timezone, "birth.timezone");
+  const timezoneLabel = timezone.match(/\(([^)]+)\)/)?.[1] ?? timezone;
+  const birthPlace = requireString(birth.location, "birth.location")
+    .replace(/,\s*USA$/i, "");
+  const chineseZodiac = requireString(themes.chineseZodiac, "themes.chineseZodiac")
+    .match(/^([a-z]+)\s+([a-z]+)/i);
+  if (!chineseZodiac) {
+    throw new Error("FATHER_NATAL_CHART_JSON has an invalid themes.chineseZodiac");
+  }
+
+  return {
+    birthDateISO: requireString(birth.date, "birth.date"),
+    birthTimeHHMM: requireString(birth.time, "birth.time"),
+    birthPlace: `${birthPlace} (${timezoneLabel})`,
+    houseSystem: requireString(birth.houseSystem, "birth.houseSystem"),
+    westernZodiac: requireString(requireObject(core.sun, "core.sun").sign, "core.sun.sign").toLowerCase(),
+    chineseZodiac: `${chineseZodiac[1]}-${chineseZodiac[2]}`.toLowerCase(),
+    placements: {
+      sun: mapPlacement(core.sun, "core.sun"),
+      moon: mapPlacement(core.moon, "core.moon"),
+      ascendant: mapPlacement(core.ascendant, "core.ascendant", 1),
+      mercury: mapPlacement(planets.mercury, "planets.mercury"),
+      venus: mapPlacement(planets.venus, "planets.venus"),
+      mars: mapPlacement(planets.mars, "planets.mars"),
+      jupiter: mapPlacement(planets.jupiter, "planets.jupiter"),
+      saturn: mapPlacement(planets.saturn, "planets.saturn"),
+      uranus: mapPlacement(planets.uranus, "planets.uranus"),
+      neptune: mapPlacement(planets.neptune, "planets.neptune"),
+      pluto: mapPlacement(planets.pluto, "planets.pluto"),
+      northNode: mapPlacement(nodes.northNode, "nodes.northNode"),
+    },
+  };
+}
+
+const NATAL = loadNatal();
 
 // ---------------------------------------------------------------
 // Sacred constants — copied verbatim from sovereign-society.ts

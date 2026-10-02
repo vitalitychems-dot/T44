@@ -15,6 +15,12 @@ For exact deduplication, compare repository paths and Git blob IDs against the l
 
 **How to apply:** Hash local files using Git's blob header and byte length, compare remote path/blob metadata, keep detailed inventories private, and fetch only approved candidates for content review.
 
+Recursive GitHub tree reads can be rate-limited when issued in a burst. Retry failed tree reads sequentially at a lower rate; never treat a 429 response as an empty tree.
+
+**Why:** A parallel tree-read batch returned HTTP 429 for five refs, while sequential retries retrieved their metadata.
+
+**How to apply:** Preserve the exact ref and commit for each retry, and include every tree result before drawing repository-overlap conclusions.
+
 Keep all old repositories until every agent agrees that its contributions are accounted for and the owner confirms the exact deletion list.
 
 **Why:** The owner explicitly confirmed this deletion gate.

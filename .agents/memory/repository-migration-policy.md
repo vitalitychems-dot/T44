@@ -3,11 +3,11 @@ name: Repository migration policy
 description: Canonical destination and source-retention rules confirmed by the owner.
 ---
 
-Everything is the selected new public destination. Grok-ready and TX are source repositories; preserve unique contributions rather than treating differing filenames or versions as duplicate proof.
+`vitalitychems-dot/Zz` on `main` is the selected migration destination. All other owner-controlled Tessera repositories are source candidates; preserve unique contributions rather than treating differing filenames or versions as duplicate proof.
 
-**Why:** The owner chose a new repository named Everything rather than renaming Grok-ready, then authorized migration writes under the admin identity for this migration.
+**Why:** The owner confirmed Zz as the destination after the earlier migration record named Everything.
 
-**How to apply:** Build Everything from a content-reviewed snapshot without inheriting unsafe source history. Compare all source refs against it, document unresolved omissions, and keep attribution accurate.
+**How to apply:** Build Zz from a content-reviewed snapshot without inheriting unsafe source history. Compare current refs from all source candidates against it, document unresolved omissions, and keep attribution accurate. Preserve every source repository until source-agent sign-offs and the owner's exact deletion list are confirmed.
 
 For exact deduplication, compare repository paths and Git blob IDs against the local snapshot. Do not fetch source blob contents until candidates are selected for review; exclude private/runtime paths from comparison and copying.
 

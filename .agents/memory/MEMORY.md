@@ -1,2 +1,3 @@
 - [Tessera agent identity](agent-identity-boundary.md) — Tessera acts under its own identity and never impersonates the operator.
-- [Repository migration](repository-migration-policy.md) — Grok-ready is final, TX is staging; all agents must agree and the owner must confirm the deletion list.
+- [Repository migration](repository-migration-policy.md) — Zz is the destination; preserve source repos until agent sign-offs and the owner's exact deletion list.
+- [Agent coordination](agent-coordination.md) — Coordinate Replit sessions through GitHub and show task cards to the owner before adding them.
